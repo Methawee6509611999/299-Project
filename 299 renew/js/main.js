@@ -14,7 +14,7 @@ let control;
 let timeStep = 1 / 60;
 let groundMaterial, playerMaterial;
 let playerBody;
-let groundEnemys = [], groundEnemyMeshs = [];
+let groundEnemys = [];
 let bullets = [];
 
 let keys = {
@@ -191,8 +191,8 @@ function handleKeys() {
         velocityX += right.x * moveSpeed;
         velocityZ += right.z * moveSpeed;
     }
-    if (keys.space) {
-        playerBody.velocity.y = 10;
+    if (keys.space && playerBody.position.y < 1) {
+        playerBody.velocity.y = 18;
     }
     if (keys.mouse0Clicked) {
         shootBullet();
@@ -233,7 +233,7 @@ function addGroundEnemy() {
 
     var groundEnemyBody = new CANNON.Body({
         mass: 1,
-        shape: boxShape
+        shape: boxShape,
     });
     var groundEnemyMesh = new THREE.Mesh(boxGeometry, material);
 
@@ -244,9 +244,17 @@ function addGroundEnemy() {
     groundEnemyMesh.position.set(x, y, z);
     groundEnemyMesh.castShadow = true;
     groundEnemyMesh.receiveShadow = true;
-    groundEnemys.push(groundEnemyBody);
-    groundEnemyMeshs.push(groundEnemyMesh);
+    groundEnemys.push({body:groundEnemyBody,mesh:groundEnemyMesh,helth:2});
+}
+setInterval(addGroundEnemy, 5000);
 
+
+function updateGroundEnemy() {
+    for (var i = 0; i < groundEnemys.length; i++) {
+        const currGroundEnemy = groundEnemys[i];
+        currGroundEnemy.mesh.position.copy(currGroundEnemy.body.position);
+        currGroundEnemy.mesh.quaternion.copy(currGroundEnemy.body.quaternion);
+    }
 }
 
 
@@ -268,7 +276,7 @@ function shootBullet() {
     const startPosition = playerBody.position.clone();
     startPosition.y += 2;
     const shootDirection = camera.getWorldDirection(new THREE.Vector3());
-    const bulletVelocity = shootDirection.multiplyScalar(50);
+    const bulletVelocity = shootDirection.multiplyScalar(75);
     bulletBody.position.copy(startPosition);
     bulletBody.velocity.copy(bulletVelocity);
 
@@ -278,10 +286,6 @@ function shootBullet() {
 
     // Store bullet objects for updating
     bullets.push({ body: bulletBody, mesh: bulletMesh ,createdAt: new Date().getTime()});
-    setTimeout(() => {
-        removeBullet({ body: bulletBody, mesh: bulletMesh, createdAt: bulletBody.createdAt });
-    }, 5000);
-
 }
 
 
@@ -291,8 +295,39 @@ function updateBullets() {
         const bullet = bullets[i];
         bullet.mesh.position.copy(bullet.body.position);
         bullet.mesh.quaternion.copy(bullet.body.quaternion);
+
+        const currentTime = new Date().getTime();
+        const timeElapsed = currentTime - bullet.createdAt;
+        if (timeElapsed > 5000) { // 5000 milliseconds (5 seconds) as an example
+            // Remove the bullet from the world
+            world.removeBody(bullet.body);
+            // Remove the bullet from the scene
+            scene.remove(bullet.mesh);
+            // Remove the bullet from our bullets array
+            bullets.shift();
+        }
     }
 }
+world.addEventListener('beginContact', function(event) {
+    let bulletIndex = bullets.findIndex(bullet => bullet.body === event.bodyA || bullet.body === event.bodyB);
+    let enemyIndex = groundEnemys.findIndex(enemy => enemy.body === event.bodyA || enemy.body === event.bodyB);
+
+    if (bulletIndex !== -1 && enemyIndex !== -1) {
+        // Collision detected, remove the bullet and the enemy
+        let bullet = bullets[bulletIndex];
+        let enemy = groundEnemys[enemyIndex];
+
+        setTimeout(() => {
+            world.removeBody(bullet.body);
+            scene.remove(bullet.mesh);
+            bullets.splice(bulletIndex, 1);
+
+            world.removeBody(enemy.body);
+            scene.remove(enemy.mesh);
+            groundEnemys.splice(enemyIndex, 1);
+        }, 0);
+    }
+});
 
 
 
@@ -313,11 +348,8 @@ function animate() {
 
 
     updateBullets();
-
-    for (var i = 0; i < groundEnemyMeshs.length; i++) {
-        groundEnemyMeshs[i].position.copy(groundEnemys[i].position);
-        groundEnemyMeshs[i].quaternion.copy(groundEnemys[i].quaternion);
-    }
+    updateGroundEnemy()
+    
 
     renderer.render(scene, camera);
 
