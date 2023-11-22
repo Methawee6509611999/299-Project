@@ -1,25 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="./css/style.css">
     <title>Document</title>
     <style>
-        body { 
+        body {
             margin: 0;
-            position: relative; /* Set the body as a positioning context for absolute positioning */
+            position: relative;
+            /* Set the body as a positioning context for absolute positioning */
         }
 
         button {
-            position: absolute; /* or 'fixed' based on your preference */
-            top: 10px; /* Adjust the top position as needed */
-            left: 10px; /* Adjust the left position as needed */
+            position: absolute;
+            /* or 'fixed' based on your preference */
+            top: 10px;
+            /* Adjust the top position as needed */
+            left: 10px;
+            /* Adjust the left position as needed */
+        }
+
+        #blocker {
+
+            position: absolute;
+
+            width: 100%;
+            height: 100%;
+
+            background-color: rgba(0, 0, 0, 0.5);
+
+        }
+
+        #instructions {
+
+            width: 100%;
+            height: 100%;
+
+            display: -webkit-box;
+            display: -moz-box;
+            display: box;
+
+            -webkit-box-orient: horizontal;
+            -moz-box-orient: horizontal;
+            box-orient: horizontal;
+
+            -webkit-box-pack: center;
+            -moz-box-pack: center;
+            box-pack: center;
+
+            -webkit-box-align: center;
+            -moz-box-align: center;
+            box-align: center;
+
+            color: #ffffff;
+            text-align: center;
+
+            cursor: pointer;
+
         }
     </style>
 </head>
+
 <body>
-    <button id ="btnPlay">play</button>
+
+    <div id="blocker">
+
+        <div id="instructions">
+            <span style="font-size:40px">Click to play</span>
+            <br />
+            (W,A,S,D = Move, SPACE = Jump, MOUSE = Look, CLICK = Shoot)
+        </div>
+
+    </div>
+    <button id="btnPlay">play</button>
     <script type="module" src="./js/main.js"></script>
 </body>
+
 </html>

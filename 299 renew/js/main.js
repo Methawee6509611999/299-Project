@@ -1,5 +1,4 @@
 import * as THREE from '../js/three.module.js';
-import { OrbitControls } from 'https://threejsfundamentals.org/threejs/resources/threejs/r132/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'https://threejsfundamentals.org/threejs/resources/threejs/r132/examples/jsm/loaders/GLTFLoader.js';
 
 import { PointerLockControls } from './PointerLockControls.js';
@@ -8,14 +7,16 @@ import * as CANNON from "../js/cannon-es.js";
 
 
 //declare variable
+let isPaused = true;
 let camera, renderer, scene;
 let world, cannonDebugger;
 let control;
 let timeStep = 1 / 60;
 let groundMaterial, playerMaterial;
 let playerBody;
-let groundEnemys = [];
+let groundEnemys = []; let groundEnemySpeed = 3;
 let bullets = [];
+
 
 let keys = {
     w: false,
@@ -32,18 +33,19 @@ initScence();
 initWorld();
 
 //temp----------------------------------------------------------
-// playerLight = new THREE.PointLight(0xffffff, 10, 100); // soft white light
-//scene.add(playerLight);
+let playerLight = new THREE.PointLight(0xffffff, 10, 100); // soft white light
+scene.add(playerLight);
 
-const boxgeometry = new THREE.BoxGeometry(2, 2, 2);
+// const boxgeometry = new THREE.BoxGeometry(2, 2, 2);
 const basicmaterial = new THREE.MeshPhongMaterial();
-const boxmesh = new THREE.Mesh(boxgeometry, basicmaterial);
-scene.add(boxmesh);
+// const boxmesh = new THREE.Mesh(boxgeometry, basicmaterial);
+// scene.add(boxmesh);
 
 
 //--------------------------------------------------------------
 
 initPointerLockControls();
+
 createGround();
 createPlayer();
 animate();
@@ -58,14 +60,21 @@ animate();
 // 3js camera,renderer,scene
 function initScence() {
     scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 5, 15);
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
+    //quality,size
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+
+    //shadows
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.BasicShadowMap;
     
+    document.body.appendChild(renderer.domElement);
 }
+
+
+
 
 // cannon world
 
@@ -79,17 +88,59 @@ function initWorld() {
     });
 
     const light = new THREE.DirectionalLight(0xffffff, 0.5);
+
+    //shadows
     light.castShadow = true;
+    light.shadow.mapSize.width = 2048; 
+    light.shadow.mapSize.height = 2048;
+    light.shadow.camera.near = 0.5;
+    light.shadow.camera.far = 500;
+    light.shadow.camera.left = -50;
+    light.shadow.camera.right = 50;
+    light.shadow.camera.top = 50;
+    light.shadow.camera.bottom = -50;
+
+    light.position.set(0, 10, 0);
+    light.shadowMapVisible = true;
+
     scene.add(light);
 }
 
 //pointerlock controls
 function initPointerLockControls() {
     control = new PointerLockControls(camera, renderer.domElement);
-    document.getElementById('btnPlay').onclick = () => {
+    const blocker = document.getElementById('blocker');
+    const instructions = document.getElementById('instructions');
+
+    blocker.onclick = () => {
         control.lock();
+        if (isPaused) {
+            isPaused = false;
+            control.enabled = true;
+        }
     }
 
+    // Add event listeners for the 'lock' and 'unlock' events
+    control.addEventListener('lock', () => {
+        blocker.style.display = 'none';
+        instructions.style.display = 'none';
+    });
+
+    control.addEventListener('unlock', () => {
+        control.enabled = false;
+
+        blocker.style.display = '-webkit-box';
+        blocker.style.display = '-moz-box';
+        blocker.style.display = 'box';
+
+        instructions.style.display = '';
+        pauseGame();
+    });
+
+}
+
+function pauseGame() {
+    isPaused = true;
 }
 
 //createground
@@ -101,15 +152,20 @@ function createGround() {
         shape: groundShape,
         material: groundMaterial
     });
+
     world.addBody(groundBody);
 
     const groundGeo = new THREE.CircleGeometry(50, 32);
     groundGeo.rotateX(-Math.PI / 2);
-    const groundmesh = new THREE.Mesh(groundGeo, basicmaterial);
-    groundmesh.receiveShadow = true;
-    scene.add(groundmesh);
 
-    for (var i = 0; i < 7; i++) {
+    // Use MeshToonMaterial for ground
+    const groundmesh = new THREE.Mesh(groundGeo, basicmaterial);
+
+    // Add shadows to the ground
+    groundmesh.receiveShadow = true;
+
+    scene.add(groundmesh);
+    for (var i = 0; i < 15; i++) {
         addGroundEnemy();
     }
 }
@@ -202,7 +258,10 @@ function handleKeys() {
     // Set the total velocity to the player body
     playerBody.velocity.x = velocityX;
     playerBody.velocity.z = velocityZ;
+
 }
+
+
 //-------------------------------------------------------------------------------------------------------------------
 
 document.addEventListener('mousedown', (event) => {
@@ -213,14 +272,16 @@ document.addEventListener('mousedown', (event) => {
 //-------------------------------------------------------------------------------------------
 function getRandomPositionInCircle(excludedRadius) {
     var angle = Math.random() * Math.PI * 2;
-    var radius = Math.random() * (50 - excludedRadius) + excludedRadius;
+    // Increase the excludedRadius value
+    var newExcludedRadius = excludedRadius * 2;
+    var radius = Math.random() * (50 - newExcludedRadius) + newExcludedRadius;
     var x = radius * Math.cos(angle);
     var z = radius * Math.sin(angle);
     return { x: x, y: 1, z: z };
 }
 
 function addGroundEnemy() {
-    var excludedRadius = 10; // Excluded radius around playerBody
+    var excludedRadius = 20; // Excluded radius around playerBody
     var randomPosition = getRandomPositionInCircle(excludedRadius);
     var x = randomPosition.x;
     var y = randomPosition.y;
@@ -237,24 +298,57 @@ function addGroundEnemy() {
     });
     var groundEnemyMesh = new THREE.Mesh(boxGeometry, material);
 
+    groundEnemyMesh.castShadow = true;
+    groundEnemyMesh.receiveShadow = true;
+
     world.addBody(groundEnemyBody);
     scene.add(groundEnemyMesh);
 
     groundEnemyBody.position.set(x, y, z);
     groundEnemyMesh.position.set(x, y, z);
-    groundEnemyMesh.castShadow = true;
-    groundEnemyMesh.receiveShadow = true;
-    groundEnemys.push({body:groundEnemyBody,mesh:groundEnemyMesh,helth:2});
+    groundEnemys.push({ body: groundEnemyBody, mesh: groundEnemyMesh,});
 }
 setInterval(addGroundEnemy, 5000);
 
 
 function updateGroundEnemy() {
+    //update three.js mesh position
     for (var i = 0; i < groundEnemys.length; i++) {
         const currGroundEnemy = groundEnemys[i];
         currGroundEnemy.mesh.position.copy(currGroundEnemy.body.position);
-        currGroundEnemy.mesh.quaternion.copy(currGroundEnemy.body.quaternion);
+        //currGroundEnemy.mesh.quaternion.copy(currGroundEnemy.body.quaternion);
+
+        //find player position
+        let direction = new CANNON.Vec3(
+            playerBody.position.x - currGroundEnemy.body.position.x,
+            playerBody.position.y - currGroundEnemy.body.position.y,
+            playerBody.position.z - currGroundEnemy.body.position.z
+        );
+        direction.normalize();
+
+        //move towards player
+        currGroundEnemy.body.velocity.x = direction.x * groundEnemySpeed;
+        currGroundEnemy.body.velocity.z = direction.z * groundEnemySpeed;
+
+        //deal with y axis
+        if (currGroundEnemy.body.position.y < -1) {
+            // Remove the groundEnemy from the scene
+            scene.remove(currGroundEnemy.mesh);
+            // Remove the groundEnemy from the physics world
+            world.removeBody(currGroundEnemy.body);
+            // Remove the groundEnemy from your groundEnemies array
+            const index = groundEnemys.indexOf(currGroundEnemy);
+            if (index > -1) {
+                groundEnemys.splice(index, 1);
+            }
+        }
+
+        // Make the enemy face the player
+        currGroundEnemy.mesh.lookAt(playerBody.position.x, playerBody.position.y, playerBody.position.z);
     }
+
+    
+
 }
 
 
@@ -276,7 +370,7 @@ function shootBullet() {
     const startPosition = playerBody.position.clone();
     startPosition.y += 2;
     const shootDirection = camera.getWorldDirection(new THREE.Vector3());
-    const bulletVelocity = shootDirection.multiplyScalar(75);
+    const bulletVelocity = shootDirection.multiplyScalar(100);
     bulletBody.position.copy(startPosition);
     bulletBody.velocity.copy(bulletVelocity);
 
@@ -285,7 +379,7 @@ function shootBullet() {
     scene.add(bulletMesh);
 
     // Store bullet objects for updating
-    bullets.push({ body: bulletBody, mesh: bulletMesh ,createdAt: new Date().getTime()});
+    bullets.push({ body: bulletBody, mesh: bulletMesh, createdAt: new Date().getTime() });
 }
 
 
@@ -308,7 +402,9 @@ function updateBullets() {
         }
     }
 }
-world.addEventListener('beginContact', function(event) {
+
+//enemydeath
+world.addEventListener('beginContact', function (event) {
     let bulletIndex = bullets.findIndex(bullet => bullet.body === event.bodyA || bullet.body === event.bodyB);
     let enemyIndex = groundEnemys.findIndex(enemy => enemy.body === event.bodyA || enemy.body === event.bodyB);
 
@@ -329,32 +425,44 @@ world.addEventListener('beginContact', function(event) {
     }
 });
 
+//playerdeath
+world.addEventListener('beginContact', function (event) {
+    let playerIndex = event.bodyA === playerBody ? 0 : event.bodyB === playerBody ? 1 : -1;
+    let enemyIndex = groundEnemys.findIndex(enemy => enemy.body === event.bodyA || enemy.body === event.bodyB);
+
+    if (playerIndex !== -1 && enemyIndex !== -1) {
+        // Collision with ground enemy detected, reset game
+        console.log("Game over!");
+        location.reload();
+    }
+});
+
+
 
 
 
 //animate
 function animate() {
-    cannonDebugger.update();
-    handleKeys();
-    world.step(timeStep);
-
-    attachCameraToPlayer()
-
-
-    boxmesh.position.copy(playerBody.position);
-    //boxmesh.quaternion.copy(playerBody.quaternion);
-
-    //playerLight.position.copy(playerBody.position);
-
-
-    updateBullets();
-    updateGroundEnemy()
-    
-
-    renderer.render(scene, camera);
-
-
     requestAnimationFrame(animate);
+    if (!isPaused) {
+        cannonDebugger.update();
+        handleKeys();
+        world.step(timeStep);
+
+        attachCameraToPlayer()
+
+
+        //boxmesh.position.copy(playerBody.position);
+        //boxmesh.quaternion.copy(playerBody.quaternion);
+
+        playerLight.position.copy(playerBody.position);
+
+
+        updateBullets();
+        updateGroundEnemy()
+    
+        renderer.render(scene, camera);
+    }
 }
 
 function onWindowResize() {
