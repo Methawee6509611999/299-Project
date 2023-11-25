@@ -1,5 +1,5 @@
 import * as THREE from '../js/three.module.js';
-import { GLTFLoader } from 'https://threejsfundamentals.org/threejs/resources/threejs/r132/examples/jsm/loaders/GLTFLoader.js';
+import { GLTFLoader } from '../js/GLTFLoader.js';
 
 import { PointerLockControls } from './PointerLockControls.js';
 import CannonDebugger from './cannon-es-debugger.js';
@@ -16,7 +16,8 @@ let groundMaterial, playerMaterial;
 let playerBody;
 let groundEnemys = []; let groundEnemySpeed = 3;
 let bullets = [];
-
+let score = 0;
+let time = 0;
 
 let keys = {
     w: false,
@@ -33,7 +34,7 @@ initScence();
 initWorld();
 
 //temp----------------------------------------------------------
-let playerLight = new THREE.PointLight(0xffffff, 10, 100); // soft white light
+let playerLight = new THREE.PointLight(0xffd469, 70, 70); // soft white light
 scene.add(playerLight);
 
 // const boxgeometry = new THREE.BoxGeometry(2, 2, 2);
@@ -45,9 +46,8 @@ const basicmaterial = new THREE.MeshPhongMaterial();
 //--------------------------------------------------------------
 
 initPointerLockControls();
-
-createGround();
 createPlayer();
+createGround();
 animate();
 
 
@@ -60,7 +60,7 @@ animate();
 // 3js camera,renderer,scene
 function initScence() {
     scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera = new THREE.PerspectiveCamera(100, window.innerWidth / window.innerHeight, 0.1, 1000);
 
     //quality,size
     renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -68,8 +68,25 @@ function initScence() {
 
     //shadows
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.BasicShadowMap;
-    
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    scene.background = new THREE.CubeTextureLoader()
+        .setPath('../models/')
+        .load([
+            'posx.jpg',
+            'negx.jpg',
+            'posy.jpg',
+            'negy.jpg',
+            'posz.jpg',
+            'negz.jpg'
+        ]);
+    {
+        const skyColor = 0xffcd61;  // averabe sky color
+        const groundColor = 0xB97A20;  // brownish orange
+        const intensity = 2;
+        const skylight = new THREE.HemisphereLight(skyColor, groundColor, intensity);
+        scene.add(skylight);
+    }
+
     document.body.appendChild(renderer.domElement);
 }
 
@@ -87,18 +104,18 @@ function initWorld() {
         scale: 1.0,
     });
 
-    const light = new THREE.DirectionalLight(0xffffff, 0.5);
+    const light = new THREE.DirectionalLight(0xffffff, 2);
 
     //shadows
     light.castShadow = true;
-    light.shadow.mapSize.width = 2048; 
+    light.shadow.mapSize.width = 2048;
     light.shadow.mapSize.height = 2048;
     light.shadow.camera.near = 0.5;
-    light.shadow.camera.far = 500;
-    light.shadow.camera.left = -50;
-    light.shadow.camera.right = 50;
-    light.shadow.camera.top = 50;
-    light.shadow.camera.bottom = -50;
+    light.shadow.camera.far = 1000;
+    light.shadow.camera.left = -500;
+    light.shadow.camera.right = 500;
+    light.shadow.camera.top = 500;
+    light.shadow.camera.bottom = -500;
 
     light.position.set(0, 10, 0);
     light.shadowMapVisible = true;
@@ -155,17 +172,30 @@ function createGround() {
 
     world.addBody(groundBody);
 
+    // Load the texture
+    var texture = new THREE.TextureLoader().load('../models/cobble_stone.png');
+
+    // Repeat the texture
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(32, 32); // Adjust these values to change the size of the tiles
+
+    // Create a material using the texture
+    var groundMaterial = new THREE.MeshPhongMaterial({ map: texture });
+    groundMaterial.receiveShadow = true;
+
+
     const groundGeo = new THREE.CircleGeometry(50, 32);
     groundGeo.rotateX(-Math.PI / 2);
 
     // Use MeshToonMaterial for ground
-    const groundmesh = new THREE.Mesh(groundGeo, basicmaterial);
+    const groundmesh = new THREE.Mesh(groundGeo, groundMaterial);
 
     // Add shadows to the ground
     groundmesh.receiveShadow = true;
 
     scene.add(groundmesh);
-    for (var i = 0; i < 15; i++) {
+    for (var i = 0; i < 7; i++) {
         addGroundEnemy();
     }
 }
@@ -215,7 +245,7 @@ document.addEventListener('keyup', (event) => {
     }
 });
 function handleKeys() {
-    const moveSpeed = 5;
+    const moveSpeed = 10;
 
     const forward = new THREE.Vector3(0, 0, -1);
     const left = new THREE.Vector3(-1, 0, 0);
@@ -270,53 +300,71 @@ document.addEventListener('mousedown', (event) => {
     }
 })
 //-------------------------------------------------------------------------------------------
-function getRandomPositionInCircle(excludedRadius) {
-    var angle = Math.random() * Math.PI * 2;
-    // Increase the excludedRadius value
-    var newExcludedRadius = excludedRadius * 2;
-    var radius = Math.random() * (50 - newExcludedRadius) + newExcludedRadius;
-    var x = radius * Math.cos(angle);
-    var z = radius * Math.sin(angle);
-    return { x: x, y: 1, z: z };
+function getRandomPositionInCircle(radius, exclusionRadius) {
+    let x, z;
+    do {
+        x = (Math.random() * 2 - 1) * radius;
+        z = (Math.random() * 2 - 1) * radius;
+    } while (x * x + z * z > radius * radius || x * x + z * z < exclusionRadius * exclusionRadius);
+
+    x += playerBody.position.x;
+    z += playerBody.position.z;
+
+    return { x: x, y: 2, z: z };
 }
 
 function addGroundEnemy() {
-    var excludedRadius = 20; // Excluded radius around playerBody
-    var randomPosition = getRandomPositionInCircle(excludedRadius);
+    var excludedRadius = 30; // Excluded radius around playerBody
+    var randomPosition = getRandomPositionInCircle(50, excludedRadius);
     var x = randomPosition.x;
     var y = randomPosition.y;
     var z = randomPosition.z;
 
     var halfExtents = new CANNON.Vec3(1, 1, 1);
     var boxShape = new CANNON.Box(halfExtents);
-    var boxGeometry = new THREE.BoxGeometry(halfExtents.x * 2, halfExtents.y * 2, halfExtents.z * 2);
-    var material = new THREE.MeshLambertMaterial({ color: 0xdddddd });
 
     var groundEnemyBody = new CANNON.Body({
-        mass: 1,
+        mass: 0.0001,
         shape: boxShape,
     });
-    var groundEnemyMesh = new THREE.Mesh(boxGeometry, material);
-
-    groundEnemyMesh.castShadow = true;
-    groundEnemyMesh.receiveShadow = true;
 
     world.addBody(groundEnemyBody);
-    scene.add(groundEnemyMesh);
-
     groundEnemyBody.position.set(x, y, z);
-    groundEnemyMesh.position.set(x, y, z);
-    groundEnemys.push({ body: groundEnemyBody, mesh: groundEnemyMesh,});
-}
-setInterval(addGroundEnemy, 5000);
 
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.load("../models/ghost2.gltf", (gltf) => {
+        if (!gltf) {
+            console.log('Model not loaded');
+            return;
+        }
+        var groundEnemyMesh = gltf.scene;
+
+        groundEnemyMesh.scale.set(0.4, 0.4, 0.4);
+        groundEnemyMesh.position.set(x, y, z);
+
+        groundEnemyMesh.traverse((node) => {
+            if (node.isMesh) {
+                node.castShadow = true;
+                node.receiveShadow = true;
+            }
+        });
+
+        scene.add(groundEnemyMesh);
+
+        groundEnemys.push({ body: groundEnemyBody, mesh: groundEnemyMesh });
+    });
+}
+for (var i = 0; i < 2; i++) {
+    setInterval(addGroundEnemy, 3000);
+}
 
 function updateGroundEnemy() {
     //update three.js mesh position
     for (var i = 0; i < groundEnemys.length; i++) {
         const currGroundEnemy = groundEnemys[i];
         currGroundEnemy.mesh.position.copy(currGroundEnemy.body.position);
-        //currGroundEnemy.mesh.quaternion.copy(currGroundEnemy.body.quaternion);
+        currGroundEnemy.mesh.position.y += 0.5;
+
 
         //find player position
         let direction = new CANNON.Vec3(
@@ -328,26 +376,16 @@ function updateGroundEnemy() {
 
         //move towards player
         currGroundEnemy.body.velocity.x = direction.x * groundEnemySpeed;
+        currGroundEnemy.body.velocity.y = direction.y * groundEnemySpeed;
         currGroundEnemy.body.velocity.z = direction.z * groundEnemySpeed;
 
-        //deal with y axis
-        if (currGroundEnemy.body.position.y < -1) {
-            // Remove the groundEnemy from the scene
-            scene.remove(currGroundEnemy.mesh);
-            // Remove the groundEnemy from the physics world
-            world.removeBody(currGroundEnemy.body);
-            // Remove the groundEnemy from your groundEnemies array
-            const index = groundEnemys.indexOf(currGroundEnemy);
-            if (index > -1) {
-                groundEnemys.splice(index, 1);
-            }
-        }
+        
+
 
         // Make the enemy face the player
         currGroundEnemy.mesh.lookAt(playerBody.position.x, playerBody.position.y, playerBody.position.z);
     }
 
-    
 
 }
 
@@ -421,6 +459,7 @@ world.addEventListener('beginContact', function (event) {
             world.removeBody(enemy.body);
             scene.remove(enemy.mesh);
             groundEnemys.splice(enemyIndex, 1);
+            updateScore();
         }, 0);
     }
 });
@@ -437,7 +476,10 @@ world.addEventListener('beginContact', function (event) {
     }
 });
 
-
+function updateScore() {
+    score++;
+    document.getElementById('score').innerText = 'Score: ' + score;
+}
 
 
 
@@ -445,22 +487,24 @@ world.addEventListener('beginContact', function (event) {
 function animate() {
     requestAnimationFrame(animate);
     if (!isPaused) {
+        time += 0.01;
+
         cannonDebugger.update();
         handleKeys();
         world.step(timeStep);
 
-        attachCameraToPlayer()
-
-
-        //boxmesh.position.copy(playerBody.position);
-        //boxmesh.quaternion.copy(playerBody.quaternion);
+        attachCameraToPlayer();
 
         playerLight.position.copy(playerBody.position);
 
+        groundEnemys.forEach((groundEnemy) => {
+            groundEnemy.mesh.position.y = Math.sin(time)*1/4;
+        });
 
         updateBullets();
-        updateGroundEnemy()
-    
+        updateGroundEnemy();
+
+
         renderer.render(scene, camera);
     }
 }
@@ -473,10 +517,4 @@ function onWindowResize() {
 
 window.addEventListener('resize', onWindowResize);
 
-const normalGround_cm = new CANNON.ContactMaterial(groundMaterial, playerMaterial, {
-    friction: 0.5,
-    restitution: 0.5,
-});
-
-world.addContactMaterial(normalGround_cm);
 

@@ -10,17 +10,20 @@
         body {
             margin: 0;
             position: relative;
-            /* Set the body as a positioning context for absolute positioning */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            height: 100vh;
         }
 
-        button {
+        #score {
             position: absolute;
-            /* or 'fixed' based on your preference */
-            top: 10px;
-            /* Adjust the top position as needed */
-            left: 10px;
-            /* Adjust the left position as needed */
+            color: #ffffff;
+            z-index: 1;
+            top: 5%; 
         }
+
+
 
         #blocker {
 
@@ -72,9 +75,10 @@
             <br />
             (W,A,S,D = Move, SPACE = Jump, MOUSE = Look, CLICK = Shoot)
         </div>
+        <div id="highscore">High Score: 0</div>
 
     </div>
-    <button id="btnPlay">play</button>
+    <div id="score">Score: 0</div>
     <script type="module" src="./js/main.js"></script>
 </body>
 
