@@ -11,13 +11,19 @@ let isPaused = true;
 let camera, renderer, scene;
 let world, cannonDebugger;
 let control;
+//timestep for cannon
 let timeStep = 1 / 60;
-let groundMaterial, playerMaterial;
+let playerMaterial;
 let playerBody;
+//ground enemy array
 let groundEnemys = []; let groundEnemySpeed = 3;
+//bullets array
 let bullets = [];
 let score = 0;
+//animation time
 let time = 0;
+// Create an Audio object
+var audio = new Audio();
 
 let keys = {
     w: false,
@@ -30,6 +36,7 @@ let keys = {
 
 
 //setup function
+initAudio();
 initScence();
 initWorld();
 
@@ -38,7 +45,7 @@ let playerLight = new THREE.PointLight(0xffd469, 70, 70); // soft white light
 scene.add(playerLight);
 
 // const boxgeometry = new THREE.BoxGeometry(2, 2, 2);
-const basicmaterial = new THREE.MeshPhongMaterial();
+// const basicmaterial = new THREE.MeshPhongMaterial();
 // const boxmesh = new THREE.Mesh(boxgeometry, basicmaterial);
 // scene.add(boxmesh);
 
@@ -55,7 +62,12 @@ animate();
 
 
 
-
+function initAudio(){
+    audio.src = '../models/ghost choir.mp3';
+    audio.play();
+    audio.loop = true;
+    audio.volume = 0.3;
+}
 
 // 3js camera,renderer,scene
 function initScence() {
@@ -86,6 +98,8 @@ function initScence() {
         const skylight = new THREE.HemisphereLight(skyColor, groundColor, intensity);
         scene.add(skylight);
     }
+
+    
 
     document.body.appendChild(renderer.domElement);
 }
@@ -193,6 +207,21 @@ function createGround() {
 
     // Add shadows to the ground
     groundmesh.receiveShadow = true;
+
+    
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.load("../models/light2.gltf", (gltf) => {
+        if (!gltf) {
+            console.log('Model not loaded');
+            return;
+        }
+        var lamp = gltf.scene;
+        // glass = lamp.getObjectByName('Cube.001');
+        // glass.material= new THREE.MeshPhongMaterial({color: 0x000000, transparent: true, opacity: 0.5});
+
+        scene.add(lamp);
+
+    });
 
     scene.add(groundmesh);
     for (var i = 0; i < 7; i++) {
@@ -489,7 +518,7 @@ function animate() {
     if (!isPaused) {
         time += 0.01;
 
-        cannonDebugger.update();
+        //cannonDebugger.update();
         handleKeys();
         world.step(timeStep);
 
