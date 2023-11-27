@@ -15,6 +15,7 @@ let control;
 let timeStep = 1 / 60;
 let playerMaterial;
 let playerBody,gun;
+let playerLight;
 //ground enemy array
 let groundEnemys = []; let groundEnemySpeed = 3;
 //bullets array
@@ -41,13 +42,8 @@ initScence();
 initWorld();
 
 //temp----------------------------------------------------------
-let playerLight = new THREE.PointLight(0xffd469, 70, 70); // soft white light
-scene.add(playerLight);
 
-// const boxgeometry = new THREE.BoxGeometry(2, 2, 2);
-// const basicmaterial = new THREE.MeshPhongMaterial();
-// const boxmesh = new THREE.Mesh(boxgeometry, basicmaterial);
-// scene.add(boxmesh);
+
 
 
 //--------------------------------------------------------------
@@ -92,30 +88,12 @@ function initScence() {
             'negz.jpg'
         ]);
     {
-        const skyColor = 0xffcd61;  // averabe sky color
+        const skyColor = 0xffcd61;  // average sky color
         const groundColor = 0xB97A20;  // brownish orange
         const intensity = 2;
         const skylight = new THREE.HemisphereLight(skyColor, groundColor, intensity);
         scene.add(skylight);
     }
-
-    document.body.appendChild(renderer.domElement);
-}
-
-
-
-
-// cannon world
-
-function initWorld() {
-    world = new CANNON.World();
-    world.gravity.set(0, -9.81, 0);
-
-    cannonDebugger = new CannonDebugger(scene, world, {
-        color: 0xffffff,
-        scale: 1.0,
-    });
-
     const light = new THREE.DirectionalLight(0xffffff, 2);
 
     //shadows
@@ -129,10 +107,27 @@ function initWorld() {
     light.shadow.camera.top = 500;
     light.shadow.camera.bottom = -500;
 
-    light.position.set(0, 10, 0);
-    light.shadowMapVisible = true;
 
+    light.position.set(0, 10, 10);
+    
     scene.add(light);
+
+    document.body.appendChild(renderer.domElement);
+}
+
+
+
+
+// cannon world
+function initWorld() {
+    world = new CANNON.World();
+    world.gravity.set(0, -9.81, 0);
+
+    cannonDebugger = new CannonDebugger(scene, world, {
+        color: 0xffffff,
+        scale: 1.0,
+    });
+    
 }
 
 //pointerlock controls
@@ -174,6 +169,7 @@ function pauseGame() {
 
 //createground
 function createGround() {
+    //create groundbody
     groundMaterial = new CANNON.Material("groundMaterial");
     const groundShape = new CANNON.Cylinder(50, 50, 0, 32);
     const groundBody = new CANNON.Body({
@@ -184,6 +180,7 @@ function createGround() {
 
     world.addBody(groundBody);
 
+    //create groundmesh
     // Load the texture
     var texture = new THREE.TextureLoader().load('../models/cobble_stone.png');
 
@@ -214,14 +211,36 @@ function createGround() {
             return;
         }
         var lamp = gltf.scene;
+        lamp.position.set(0, 0, 0);
+        lamp.receiveShadow = true;
+        lamp.castShadow = true;
+        const lampLight1 = new THREE.PointLight(0xffd469, 100, 100); // soft white light
+        lampLight1.position.set(2, 12, 0);
+        scene.add(lampLight1);
+        const lampLight2 = new THREE.PointLight(0xffd469, 100, 100); // soft white light
+        lampLight2.position.set(-2, 12, 0);
+        scene.add(lampLight2);
+        const lampLight3 = new THREE.PointLight(0xffd469, 100, 100); // soft white light
+        lampLight3.position.set(0, 12, 2);
+        scene.add(lampLight3);
+        const lampLight4 = new THREE.PointLight(0xffd469, 100, 100); // soft white light
+        lampLight4.position.set(0, 12, -2);
+        scene.add(lampLight4);
         // glass = lamp.getObjectByName('Cube.001');
         // glass.material= new THREE.MeshPhongMaterial({color: 0x000000, transparent: true, opacity: 0.5});
-
+        lamp.traverse((node) => {
+            if (node.isMesh) {
+                node.castShadow = true;
+                node.receiveShadow = true;
+            }
+        });
         scene.add(lamp);
 
     });
-
+    //add ground to tree.js scene
     scene.add(groundmesh);
+
+    //add initial ground enemy
     for (var i = 0; i < 7; i++) {
         addGroundEnemy();
     }
@@ -257,6 +276,8 @@ function createPlayer() {
 
     });
 
+    playerLight = new THREE.PointLight(0xffd469, 70, 70); // soft white light
+    scene.add(playerLight);
 }
 
 function updateGunPosition() {
