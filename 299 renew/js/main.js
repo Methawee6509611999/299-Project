@@ -14,7 +14,7 @@ let control;
 //timestep for cannon
 let timeStep = 1 / 60;
 let playerMaterial;
-let playerBody;
+let playerBody,gun;
 //ground enemy array
 let groundEnemys = []; let groundEnemySpeed = 3;
 //bullets array
@@ -98,8 +98,6 @@ function initScence() {
         const skylight = new THREE.HemisphereLight(skyColor, groundColor, intensity);
         scene.add(skylight);
     }
-
-    
 
     document.body.appendChild(renderer.domElement);
 }
@@ -246,9 +244,45 @@ function createPlayer() {
     playerBody.linearDamping = 0.5;
 
     world.addBody(playerBody);
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.load("../models/Point_hand.gltf", (gltf) => {
+        if (!gltf) {
+            console.log('Model not loaded');
+            return;
+        }
+        gun = gltf.scene;
+        gun.scale.set(0.5, 0.5, 0.5);
+        gun.position.set(0, 0, 0);
+        scene.add(gun);
+
+    });
 
 }
 
+function updateGunPosition() {
+    // Get the camera's direction vector
+    var direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
+
+    
+    // Multiply the direction vector by the desired distance from the camera to the gun
+    direction.multiplyScalar(1);
+
+    // Add the resulting vector to the camera's position to get the gun's position
+    var gunPosition = camera.position.clone().add(direction);
+    
+
+    // Set the gun's position to the calculated position
+    gun.position.copy(gunPosition);
+    gun.position.y -= 0.5; // Adjust the gun's height to match the player's height
+    gun.position.x += 0.5; // Adjust the gun's position to match the player's position
+
+    // Set the gun's rotation to match the camera's rotation
+    gun.rotation.copy(camera.rotation);
+    gun.rotateY(-Math.PI/2); // Rotate the gun 180 degrees on the y-axis to point the gun backwards
+    // Add the gun to the scene
+    scene.add(gun);
+}
 function attachCameraToPlayer() {
     camera.position.copy(playerBody.position);
     camera.position.y += 2;
@@ -532,6 +566,7 @@ function animate() {
 
         updateBullets();
         updateGroundEnemy();
+        updateGunPosition();
 
 
         renderer.render(scene, camera);
