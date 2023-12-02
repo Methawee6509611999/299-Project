@@ -272,11 +272,25 @@ function createPlayer() {
         gun = gltf.scene;
         gun.scale.set(0.5, 0.5, 0.5);
         gun.position.set(0, 0, 0);
+        gun.traverse((node) => {
+            if (node.isMesh) {
+                node.castShadow = true;
+                node.receiveShadow = true;
+            }
+        });
         scene.add(gun);
 
     });
 
     playerLight = new THREE.PointLight(0xffd469, 70, 70); // soft white light
+    playerLight.shadow.mapSize.width = 512; // default
+    playerLight.shadow.mapSize.height = 512; // default
+    playerLight.shadow.camera.near = 0.5; // defaults
+    playerLight.shadow.camera.far = 500; // default
+    playerLight.castShadow = true;
+    playerLight.shadow.bias = -0.0001;
+    playerLight.position.set(0, 0, 0);
+    
     scene.add(playerLight);
 }
 
