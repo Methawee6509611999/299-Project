@@ -1,11 +1,11 @@
 import * as THREE from '../js/three.module.js';
 import { GLTFLoader } from '../js/GLTFLoader.js';
-
 import { PointerLockControls } from './PointerLockControls.js';
 import CannonDebugger from './cannon-es-debugger.js';
 import * as CANNON from "../js/cannon-es.js";
-
-
+//สันติภาพ พิพัฒน์รัตนชัย 6509612047
+//ณัฐกฤต วิจิตรไพบูลย์สุข 6509611700
+//เมธาวี สุขศรี 6509611999
 //declare variable
 let isPaused = true;
 let camera, renderer, scene;
@@ -137,7 +137,7 @@ function initPointerLockControls() {
     const instructions = document.getElementById('instructions');
 
     blocker.onclick = () => {
-        control.lock();
+        control.lock();audio.play();
         if (isPaused) {
             isPaused = false;
             control.enabled = true;
@@ -344,12 +344,12 @@ document.addEventListener('keyup', (event) => {
 });
 function handleKeys() {
     const moveSpeed = 10;
-
+    // Get the forward, left, backward, and right vectors
     const forward = new THREE.Vector3(0, 0, -1);
     const left = new THREE.Vector3(-1, 0, 0);
     const backward = new THREE.Vector3(0, 0, 1);
     const right = new THREE.Vector3(1, 0, 0);
-
+    // Apply the camera's quaternion to the vectors
     forward.applyQuaternion(camera.quaternion);
     left.applyQuaternion(camera.quaternion);
     backward.applyQuaternion(camera.quaternion);
@@ -398,6 +398,7 @@ document.addEventListener('mousedown', (event) => {
     }
 })
 //-------------------------------------------------------------------------------------------
+//find a posintion to spwan enemy not too close to player
 function getRandomPositionInCircle(radius, exclusionRadius) {
     let x, z;
     do {
@@ -410,14 +411,16 @@ function getRandomPositionInCircle(radius, exclusionRadius) {
 
     return { x: x, y: 2, z: z };
 }
-
+//create ground enemy
 function addGroundEnemy() {
+    //where enemy spawn
     var excludedRadius = 30; // Excluded radius around playerBody
     var randomPosition = getRandomPositionInCircle(50, excludedRadius);
     var x = randomPosition.x;
     var y = randomPosition.y;
     var z = randomPosition.z;
 
+    //create enemy body
     var halfExtents = new CANNON.Vec3(1, 1, 1);
     var boxShape = new CANNON.Box(halfExtents);
 
@@ -429,6 +432,7 @@ function addGroundEnemy() {
     world.addBody(groundEnemyBody);
     groundEnemyBody.position.set(x, y, z);
 
+    //create enemy mesh
     const gltfLoader = new GLTFLoader();
     gltfLoader.load("../models/ghost2.gltf", (gltf) => {
         if (!gltf) {
@@ -448,10 +452,12 @@ function addGroundEnemy() {
         });
 
         scene.add(groundEnemyMesh);
-
+        // Add the ground enemy to the array
         groundEnemys.push({ body: groundEnemyBody, mesh: groundEnemyMesh });
     });
 }
+
+//add 2 ground enemy every 3 seconds
 for (var i = 0; i < 2; i++) {
     setInterval(addGroundEnemy, 3000);
 }
@@ -490,6 +496,7 @@ function updateGroundEnemy() {
 
 //bullet shooter
 function shootBullet() {
+    // Create the bullet body
     const bulletShape = new CANNON.Sphere(0.2);
     const bulletMaterial = new CANNON.Material("bulletMaterial");
 
@@ -498,7 +505,7 @@ function shootBullet() {
         shape: bulletShape,
         material: bulletMaterial,
     });
-
+    // Create the bullet mesh
     const bulletGeometry = new THREE.SphereGeometry(bulletShape.radius, 32, 32);
     const bulletMesh = new THREE.Mesh(bulletGeometry, new THREE.MeshLambertMaterial({ color: 0xff0000 }));
 
@@ -521,6 +528,7 @@ function shootBullet() {
 
 
 function updateBullets() {
+    // Update the position of the bullets
     for (let i = 0; i < bullets.length; i++) {
         const bullet = bullets[i];
         bullet.mesh.position.copy(bullet.body.position);
@@ -541,6 +549,7 @@ function updateBullets() {
 
 //enemydeath
 world.addEventListener('beginContact', function (event) {
+    // Find the bullet and enemy involved in the collision
     let bulletIndex = bullets.findIndex(bullet => bullet.body === event.bodyA || bullet.body === event.bodyB);
     let enemyIndex = groundEnemys.findIndex(enemy => enemy.body === event.bodyA || enemy.body === event.bodyB);
 
@@ -548,7 +557,7 @@ world.addEventListener('beginContact', function (event) {
         // Collision detected, remove the bullet and the enemy
         let bullet = bullets[bulletIndex];
         let enemy = groundEnemys[enemyIndex];
-
+        // Remove the bullet and enemy after 0 seconds (immediately)
         setTimeout(() => {
             world.removeBody(bullet.body);
             scene.remove(bullet.mesh);
@@ -575,6 +584,7 @@ world.addEventListener('beginContact', function (event) {
 });
 
 function updateScore() {
+    // Update the score
     score++;
     document.getElementById('score').innerText = 'Score: ' + score;
 }
@@ -607,7 +617,7 @@ function animate() {
         renderer.render(scene, camera);
     }
 }
-
+//resize
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix(); // Fix the typo here
